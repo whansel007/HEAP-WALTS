@@ -1,9 +1,9 @@
 let catImages = [
-  "https://imgur.com/FCwrLol",
-  "https://imgur.com/SWPGEMo",
-  "https://imgur.com/ziwGDNH",
-  "https://imgur.com/facfWox",
-  "https://imgur.com/aWBZcab",
+  "https://i.imgur.com/FCwrLol.gif",
+  "https://i.imgur.com/SWPGEMo.gif",
+  "https://i.imgur.com/ziwGDNH.gif",
+  "https://i.imgur.com/facfWox.gif",
+  "https://i.imgur.com/aWBZcab.gif",
 ];
 
 const imgs = document.getElementsByTagName("img");
