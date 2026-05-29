@@ -12,3 +12,4 @@ for (image of imgs) {
   const index = Math.floor(Math.random() * catImages.length);
   image.src = catImages[index];
 }
+
