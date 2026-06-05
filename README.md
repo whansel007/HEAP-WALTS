@@ -1,17 +1,23 @@
-# What is the project actually?
-HEAP Project: Chrome extension to read text in images using OCR and overlay its translation over them automatically for free.
-I think we can use Tesseract.js for OCR and LibreTranslate for the translation (these are both free)
-Or we can use google's API but that would be limited
+# Languages
+Eng <-> Chinese
+Eng <-> Korean
+Eng <-> Japanese
 
-# Okay but WHAT THE HECK IS THIS CAT THINGY THEN?
-Just curious to see how things can work, as it stands now, it just replaces every image tag on yt with pictures of cartoon cats I have :V
-Also pls change the README soon ~ 
-[This is the video I watched for reference](https://www.youtube.com/watch?v=Zt_6UXvoKHM&ab_channel=HassanElMghari)
+# Core Features needed to implement (maybe one feature per person?):
+1. Scan page for manga images, extract and feed them into the pipeline
+Find a way to extract text bubbles from the manga page, using flood fill right now! (William) 
+2. OCR via Tesseract.js, extract text and clean up messy output 
+3. Translation via LibreTranslate (Chinese, Korean, Japanese, English) (Lucas)
+4. Canvas overlay, render translated text on original image
+Track the coordinates of the text. Overlay a white box with the translated text.
+When scrolling, the overlay should move along.
+5. UI/UX, language selector popup, original/translated toggle widget, loading states, polish
 
-# Why would you do this?
-Proof of concept, our software is a Chrome extension that needs to detect all the images on a page, translate the text, and overally the results over the original one. A simple manipulation like this serves as a ground 0 to actual features later.
+# “Good to have”/Additional Features:
+1. Change OCR Models
+2. 
 
-Also, it is extremely FUNI to me :3
-
-# We can do task breakdowns here:
-Who will do what type of stuff, but that would warrant a discussion first 
+# Websites to Test on (Manga):
+MANGA Plus for your baseline.
+VIZ/Shonen Jump for another official source.
+MangaDex for edge cases and scanlation behavior.
