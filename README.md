@@ -1,32 +1,120 @@
-# Languages
-Eng <-> Chinese
-Eng <-> Korean
-Eng <-> Japanese
+Manga Bookmark 
 
-# Core Features needed to implement (maybe one feature per person?):
-1. Scan page for manga images, extract and feed them into the pipeline
-Find a way to extract text bubbles from the manga page and then crop, using flood fill right now! (William) 
-2. OCR via Tesseract.js, extract text and clean up messy output 
-3. Translation via LibreTranslate (Chinese, Korean, Japanese, English) (Lucas)
-4. Canvas overlay, render translated text on original image
-Track the coordinates of the text. Overlay a white box with the translated text.
-When scrolling, the overlay should move along.
-5. UI/UX, language selector popup, original/translated toggle widget, loading states, polish
+What full-stack means for this project
 
-# “Good to have”/Additional Features:
-1. Change OCR Models
-2. 
+Your stack can be:
 
-# Websites to Test on (Manga):
-MANGA Plus for your baseline.
-VIZ/Shonen Jump for another official source.
-MangaDex for edge cases and scanlation behavior.
+**Frontend:**
 
-# Testing Guide
-1. In terminal, run npx serve dev (this will create a mock simple site that only hosts an image)
-2. Open http://localhost:3000 in Chrome 
-3. Go to  extension settings → enable Developer mode → Load unpacked → select the project root
-4. Click the extension icon → Manga Detector → Detect Bubbles
-5. F12 to check Console for logs and Downloads folder for the output image
+* Chrome extension popup \+ options page (HTML/CSS/JavaScript)  
+* React/TypeScript or plain JS
 
-Refresh extension in the extension page after every code change! 
+**Backend:**
+
+* Node.js \+ Express API server (you already use Express)  
+* Optional: MongoDB or SQLite to store bookmarks for signed-in users
+
+**Storage:**
+
+* Local-only version: `chrome.storage.local` for bookmarks, no backend needed  
+* Full-stack version: backend API \+ database \+ optional auth
+
+You can start with local-only and then add a backend as an “advanced version.”
+
+Core features (MVP)
+
+For 8 sessions, focus on this minimal set:
+
+1. **Save manga page**  
+   * The user is on a manga chapter page.  
+   * Click extension icon → “Save this page”.  
+   * Extension stores:  
+     * URL  
+     * Title (from page `<title>` or manually entered)  
+     * Chapter number (optional)  
+     * Timestamp  
+     * Status: Reading / Waiting / Later / Finished  
+2. **View reading list**  
+   * A popup or dedicated page shows all saved manga.  
+   * Each entry shows: title, chapter, status, last read date.  
+   * Click entry → open the page  
+3. **Edit / delete**  
+   * Edit chapter number.  
+   * Change status (Reading → Finished).  
+   * Delete entry  
+4. **Search / filter**  
+   * Filter by status (Reading, Later, Finished).  
+   * Basic search by title
+
+That’s already a complete, usable product.
+
+Optional advanced features (if time)
+
+* Export/backup to JSON, import from JSON  
+* Drag-to-reorder list.  
+* Notes per manga (“Started at chapter 5, dark arc”).  
+* Simple sync with backend: login \+ cloud storage.  
+* Dark mode / theme colors.
+
+Suggested 8-week plan (1 session/week)
+
+Each week is a milestone with a small demo.
+
+**Week 1: Project setup \+ basic extension**
+
+* Create extension folder: `manifest.json`, `popup.html`, `popup.js`, `background.js` or `content.js`.  
+* Implement a “Save this page” button that stores URL \+ title in `chrome.storage.local`.  
+* Show a simple list in the popup (just URLs for now).
+
+**Week 2: Reading list UI**
+
+* Improve popup UI: show title, chapter, status.  
+* Add edit chapter number and change status.  
+* Add delete button.  
+* Store data as an array of entries in `chrome.storage.local`
+
+**Week 3: Filter \+ search**
+
+* Add filter buttons: All / Reading / Later / Finished.  
+* Add search bar to filter by title.  
+* Improve UI with CSS (maybe minimal Tailwind or custom styles).
+
+**Week 5: Add backend (Express API)**
+
+* Set up Node.js \+ Express server locally.  
+* Create endpoints:  
+  * `POST /api/bookmarks`  
+  * `GET /api/bookmarks`  
+  * `PUT /api/bookmarks/:id`  
+  * `DELETE /api/bookmarks/:id`.\[[stackoverflow](https://stackoverflow.com/questions/12575965/is-it-possible-to-develop-google-chrome-extensions-using-node-js)\]  
+* Extension can optionally send data to backend instead of, or in addition to, local storage.
+
+**Week 6: Database \+ optional auth**
+
+* Add MongoDB or SQLite.  
+* Store bookmarks with user ID.  
+* Optional: simple JWT auth or just API key for demo.  
+* Extension can store API token in `chrome.storage.local`.
+
+**Week 7: Polish UI \+ UX**
+
+* Improve popup design, animations, error states.  
+* Add loading states, empty state (“No bookmarks yet”).  
+* Add a simple onboarding tutorial.
+
+**Week 8: Testing \+ demo \+ documentation**
+
+* Test on multiple manga sites.  
+* Write a README with installation steps.  
+* Record a 2–3 minute demo video.  
+* Prepare a short slide deck for the program.
+
+What makes this a strong full-stack demo
+
+You can show:
+
+* A working Chrome extension (frontend).  
+* A Node.js \+ Express backend (API).  
+* A database (optional but looks good).  
+* Clear data flow: extension → backend → database.  
+* Your own UI design, not just a template.
