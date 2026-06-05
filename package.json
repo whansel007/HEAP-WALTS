@@ -1,9 +1,17 @@
 {
+  "name": "manga-tracker",
+  "version": "2.0.0",
+  "scripts": {
+    "server": "node server.js",
+    "dev": "npx serve dev"
+  },
   "dependencies": {
+    "cors": "^2.8.6",
     "ejs": "^6.0.1",
     "express": "^5.2.1",
     "jimp": "^1.6.1",
     "path": "^0.12.7",
-    "tesseract.js": "^7.0.0"
+    "tesseract.js": "^7.0.0",
+    "uuid": "^9.0.1"
   }
 }

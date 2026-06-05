@@ -1,9 +1,67 @@
 <!DOCTYPE html>
 <html>
-  <body style="width:200px; padding:12px; font-family:sans-serif;">
-    <h3 style="margin:0 0 10px">Manga Detector</h3>
-    <button id="run" style="width:100%">Detect Bubbles</button>
-    <p id="status" style="font-size:12px; color:gray;"></p>
-  </body>
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Manga Tracker</h1>
+      <div class="header-actions">
+        <button id="translate-btn" title="Run translation on current page">Translate</button>
+        <button id="save-btn">+ Save Page</button>
+      </div>
+    </header>
+
+    <div class="search-bar">
+      <input id="search" type="text" placeholder="Search manga...">
+    </div>
+
+    <div class="filters">
+      <button class="filter active" data-filter="all">All</button>
+      <button class="filter" data-filter="Reading">Reading</button>
+      <button class="filter" data-filter="Later">Later</button>
+      <button class="filter" data-filter="Finished">Finished</button>
+    </div>
+
+    <div id="list"></div>
+
+    <div id="empty-state" class="hidden">
+      <div class="empty-icon">📚</div>
+      <p class="empty-title">No manga saved yet</p>
+      <p class="empty-sub">Click "+ Save Page" while on a manga chapter to add it.</p>
+    </div>
+
+    <div id="loading" class="hidden">
+      <span class="spinner"></span> Loading...
+    </div>
+  </div>
+
+  <div id="modal" class="hidden">
+    <div class="modal-content">
+      <h3>Edit Entry</h3>
+      <label>
+        Chapter
+        <input id="edit-chapter" type="number" min="0" placeholder="0">
+      </label>
+      <label>
+        Status
+        <select id="edit-status">
+          <option value="Reading">Reading</option>
+          <option value="Later">Later</option>
+          <option value="Finished">Finished</option>
+        </select>
+      </label>
+      <div class="modal-actions">
+        <button id="modal-cancel">Cancel</button>
+        <button id="modal-save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="status-toast" class="hidden"></div>
+
   <script src="popup.js"></script>
+</body>
 </html>
