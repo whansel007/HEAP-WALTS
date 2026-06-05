@@ -1,15 +1,26 @@
-let catImages = [
-  "https://i.imgur.com/FCwrLol.gif",
-  "https://i.imgur.com/SWPGEMo.gif",
-  "https://i.imgur.com/ziwGDNH.gif",
-  "https://i.imgur.com/facfWox.gif",
-  "https://i.imgur.com/aWBZcab.gif",
-];
+// content.js - controller
 
-const imgs = document.getElementsByTagName("img");
+async function run() {
+  const images = document.querySelectorAll('img');
+  if (images.length === 0) {
+    alert('No images found on this page.');
+    return;
+  }
 
-for (image of imgs) {
-  const index = Math.floor(Math.random() * catImages.length);
-  image.src = catImages[index];
+  for (const img of images) {
+    // Skip small images like icons/thumbnails
+    if (img.naturalWidth < 200 || img.naturalHeight < 200) continue;
+
+    console.log(`Processing image: ${img.src}`);
+
+    const resultDataUrl = await detectBubbles(img);
+    downloadImage(resultDataUrl, img.src);
+  }
 }
 
+function downloadImage(dataUrl, originalSrc) {
+  const filename = 'detected_' + (originalSrc.split('/').pop().split('?')[0] || 'output.png');
+  chrome.runtime.sendMessage({ type: 'download', url: dataUrl, filename });
+}
+
+run();
