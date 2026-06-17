@@ -15,6 +15,27 @@ const SITE_CONFIGS = [
     },
   },
   {
+    name: 'MangaFire',
+    match: /mangafire\.to/,
+    getChapter() {
+      return location.href.match(/chapter-(\d+)/i)?.[1] ?? null;
+    },
+  },
+  {
+    name: 'Webtoons',
+    match: /webtoons\.com/,
+    getChapter() {
+      return location.href.match(/episode-(\d+)/i)?.[1] ?? null;
+    },
+  },
+  {
+    name: 'TCBScans',
+    match: /tcbscans\./,
+    getChapter() {
+      return location.href.match(/chapter-(\d+)/i)?.[1] ?? null;
+    },
+  },
+  {
     name: 'Generic',
     match: /.*/,
     getChapter() {
@@ -27,6 +48,8 @@ const SITE_CONFIGS = [
   },
 ];
 
+// ── Detection ─────────────────────────────────────────────────────────────────
+
 function getSiteConfig() {
   return SITE_CONFIGS.find(s => s.match.test(location.href));
 }
@@ -38,32 +61,45 @@ function detectChapter() {
   return chapter ? parseInt(chapter) : null;
 }
 
+// ── Update ────────────────────────────────────────────────────────────────────
+
 function tryUpdate() {
   const chapter = detectChapter();
   const site = getSiteConfig();
-  console.log(`[MangaTracker] site: ${site?.name}, chapter: ${chapter}`);
+  console.log(`[MangaTracker] site: ${site?.name}, chapter: ${chapter}, title: ${document.title}`);
   if (chapter) {
     chrome.runtime.sendMessage({
       type: 'AUTO_UPDATE_CHAPTER',
       url: location.href,
+      title: document.title,
       chapter,
     });
   }
 }
 
-// Watch title changes (React/SPA apps set title after load)
-const titleEl = document.querySelector('title');
-if (titleEl) {
-  new MutationObserver(() => tryUpdate()).observe(titleEl, { childList: true });
+// ── Observers ─────────────────────────────────────────────────────────────────
+
+let titleObserver = null;
+
+function attachTitleObserver() {
+  if (titleObserver) titleObserver.disconnect();
+  const titleEl = document.querySelector('title');
+  if (titleEl) {
+    titleObserver = new MutationObserver(() => tryUpdate());
+    titleObserver.observe(titleEl, { childList: true });
+  }
 }
 
-// Watch URL changes (SPA navigation between chapters)
+// Watch for URL changes (SPA navigation)
 let lastUrl = location.href;
 new MutationObserver(() => {
   if (location.href !== lastUrl) {
     lastUrl = location.href;
+    attachTitleObserver();
     tryUpdate();
   }
 }).observe(document.body, { childList: true, subtree: true });
 
+// Initial setup
+attachTitleObserver();
 tryUpdate();

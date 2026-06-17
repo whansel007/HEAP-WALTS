@@ -8,7 +8,7 @@ let activeFilter = 'all';
 let searchQuery = '';
 let editingId = null;
 
-// ── Storage ──────────────────────────────────────────────────────────────────
+// ── Storage ───────────────────────────────────────────────────────────────────
 
 async function loadBookmarks() {
   const { bookmarks: stored = [] } = await chrome.storage.local.get('bookmarks');
@@ -24,7 +24,7 @@ async function getApiKey() {
   return apiKey || DEFAULT_API_KEY;
 }
 
-// ── Optional backend sync (fails silently — local storage is primary) ────────
+// ── Optional backend sync ─────────────────────────────────────────────────────
 
 async function syncToBackend(method, path, body) {
   try {
@@ -38,6 +38,88 @@ async function syncToBackend(method, path, body) {
   } catch (_) {
     // backend is optional
   }
+}
+
+// ── Manga title extraction ────────────────────────────────────────────────────
+
+function extractMangaTitle(rawTitle) {
+  return rawTitle
+    .replace(/^\d+\s*\|\s*/, '')                // remove leading "1 | "
+    .replace(/chapter\s*\d+\s*[-–]?\s*/i, '')   // remove "Chapter 6 - "
+    .replace(/[-–]\s*MangaDex\s*$/i, '')         // remove "- MangaDex"
+    .replace(/[-–]\s*MANGA Plus\s*$/i, '')        // remove "- MANGA Plus"
+    .trim();
+}
+
+// ── Current reading bar ───────────────────────────────────────────────────────
+
+async function showCurrentReading() {
+  const el = document.getElementById('current-reading');
+  if (!el) return;
+
+  // First check the active tab directly
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  
+  if (tab?.url) {
+    // Ask content.js to detect the chapter on the current tab
+    try {
+      const results = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => {
+          // Run detection inline
+          const titleChapter = document.title.match(/Chapter\s+(\d+)/i)?.[1]
+            ?? document.title.match(/#(\d+)/)?.[1]
+            ?? document.title.match(/ch(?:apter)?\.?\s*(\d+)/i)?.[1]
+            ?? null;
+          return {
+            chapter: titleChapter ? parseInt(titleChapter) : null,
+            title: document.title,
+            url: location.href,
+          };
+        },
+      });
+
+      const { chapter, title, url } = results[0].result;
+
+      if (chapter) {
+        // Update currentReading in storage so savePage() can use it
+        await chrome.storage.local.set({
+          currentReading: {
+            url,
+            title,
+            chapter,
+            updatedAt: Date.now(),
+          }
+        });
+
+        const mangaTitle = extractMangaTitle(title);
+        el.classList.remove('hidden');
+        el.innerHTML = `
+          <span class="now-reading-label">Now reading</span>
+          <span class="now-reading-title">${mangaTitle}</span>
+          <span class="now-reading-chapter">Ch. ${chapter}</span>
+        `;
+        return;
+      }
+    } catch (_) {
+      // Tab might not be a manga page, fall through to stored value
+    }
+  }
+
+  // Fallback: use stored currentReading
+  const { currentReading } = await chrome.storage.local.get('currentReading');
+  if (!currentReading) { el.classList.add('hidden'); return; }
+
+  const age = Date.now() - currentReading.updatedAt;
+  if (age > 10 * 60 * 1000) { el.classList.add('hidden'); return; }
+
+  const mangaTitle = extractMangaTitle(currentReading.title || '');
+  el.classList.remove('hidden');
+  el.innerHTML = `
+    <span class="now-reading-label">Now reading</span>
+    <span class="now-reading-title">${mangaTitle}</span>
+    <span class="now-reading-chapter">Ch. ${currentReading.chapter}</span>
+  `;
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
@@ -69,7 +151,7 @@ function renderList() {
         <span class="badge badge-${b.status.toLowerCase()}">${b.status}</span>
       </div>
       <div class="card-meta">
-        <span>Ch.&nbsp;${b.chapter || '—'}</span>
+        <span>Ch.&nbsp;${b.chapter != null && b.chapter !== 0 ? b.chapter : '—'}</span>
         <div class="card-actions">
           <button class="btn-edit" data-id="${b.id}">Edit</button>
           <button class="btn-delete" data-id="${b.id}">✕</button>
@@ -93,16 +175,28 @@ async function savePage() {
   const url = tab.url;
   const title = tab.title || url;
 
+  if (!url.startsWith('http')) {
+    showToast('Cannot save this page', 'err');
+    return;
+  }
+
   if (bookmarks.find(b => b.url === url)) {
     showToast('Already saved!', 'warn');
     return;
   }
 
+  const mangaTitle = extractMangaTitle(title);
+
+  // Try to get current chapter from auto-detection
+  const { currentReading } = await chrome.storage.local.get('currentReading');
+  const currentChapter = currentReading?.url === url ? currentReading.chapter : 0;
+
   const bookmark = {
     id: Date.now().toString(),
     url,
     title,
-    chapter: 0,
+    mangaTitle,
+    chapter: currentChapter,  // use detected chapter if available
     status: 'Later',
     savedAt: new Date().toISOString(),
   };
@@ -167,7 +261,7 @@ function showToast(msg, type = 'ok') {
   toastTimer = setTimeout(() => el.classList.add('hidden'), 2200);
 }
 
-// ── Translation (existing pipeline) ──────────────────────────────────────────
+// ── Translation ───────────────────────────────────────────────────────────────
 
 async function runTranslation() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -194,6 +288,7 @@ async function init() {
   await loadBookmarks();
   document.getElementById('loading').classList.add('hidden');
   renderList();
+  await showCurrentReading();
 
   document.getElementById('save-btn').addEventListener('click', savePage);
   document.getElementById('translate-btn').addEventListener('click', runTranslation);
