@@ -367,3 +367,106 @@ h1 {
 #status-toast.ok   { background: #1a3828; color: #34d399; border: 1px solid #34d399; }
 #status-toast.warn { background: #3a2a16; color: #f59e0b; border: 1px solid #f59e0b; }
 #status-toast.err  { background: #2a1a1a; color: #ef4444; border: 1px solid #ef4444; }
+
+/* Tags Styling */
+.filter-select {
+  background: #1a1a22;
+  border: 1px solid #2a2a35;
+  border-radius: 20px;
+  padding: 4px 12px;
+  color: #a0a0b0;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  outline: none;
+  max-width: 110px;
+  text-overflow: ellipsis;
+}
+.filter-select:hover { border-color: #6366f1; color: #c0c0d0; }
+.filter-select option { background: #1a1a22; color: #e8e8ec; }
+
+.bookmark-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+  margin-bottom: 2px;
+}
+
+.tag-pill {
+  background: #23232f;
+  color: #9f9fb5;
+  border: 1px solid #333346;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 9px;
+  font-weight: 500;
+  text-transform: lowercase;
+}
+
+.modal-tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+  min-height: 24px;
+}
+
+.modal-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #23232f;
+  color: #e8e8ec;
+  border: 1px solid #3a3a4e;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: lowercase;
+}
+
+.modal-tag-chip .btn-remove-tag {
+  background: none;
+  border: none;
+  color: #888899;
+  cursor: pointer;
+  font-size: 10px;
+  padding: 0;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-tag-chip .btn-remove-tag:hover {
+  color: #ef4444;
+}
+
+.tag-input-group {
+  display: flex;
+  gap: 6px;
+}
+.tag-input-group input {
+  flex: 1;
+}
+
+#btn-add-tag {
+  background: #1a1a22;
+  border: 1px solid #2a2a35;
+  color: #888899;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#btn-add-tag:hover {
+  background: #6366f1;
+  border-color: #6366f1;
+  color: #fff;
+}

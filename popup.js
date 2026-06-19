@@ -6,7 +6,9 @@ const DEFAULT_API_KEY = 'manga-tracker-dev-key';
 let bookmarks = [];
 let activeFilter = 'all';
 let searchQuery = '';
+let activeTagFilter = '';
 let editingId = null;
+let modalTags = [];
 
 // ── Storage ───────────────────────────────────────────────────────────────────
 
@@ -127,15 +129,46 @@ async function showCurrentReading() {
 function getFiltered() {
   return bookmarks.filter(b => {
     const matchFilter = activeFilter === 'all' || b.status === activeFilter;
-    const matchSearch = b.title.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchFilter && matchSearch;
+    const matchSearch = (b.title || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchTag = !activeTagFilter || (b.tags && b.tags.includes(activeTagFilter));
+    return matchFilter && matchSearch && matchTag;
   });
+}
+
+function updateTagFilterDropdown() {
+  const select = document.getElementById('tag-filter');
+  if (!select) return;
+
+  const allTags = new Set();
+  bookmarks.forEach(b => {
+    if (b.tags) {
+      b.tags.forEach(t => allTags.add(t));
+    }
+  });
+
+  const currentSelection = activeTagFilter;
+
+  let html = '<option value="">All Tags</option>';
+  Array.from(allTags).sort().forEach(tag => {
+    const selected = tag === currentSelection ? 'selected' : '';
+    html += `<option value="${tag}" ${selected}>${tag}</option>`;
+  });
+  select.innerHTML = html;
+
+  const datalist = document.getElementById('existing-tags');
+  if (datalist) {
+    datalist.innerHTML = Array.from(allTags).sort()
+      .map(t => `<option value="${t}"></option>`)
+      .join('');
+  }
 }
 
 function renderList() {
   const list = document.getElementById('list');
   const empty = document.getElementById('empty-state');
   const filtered = getFiltered();
+
+  updateTagFilterDropdown();
 
   if (filtered.length === 0) {
     list.innerHTML = '';
@@ -144,21 +177,27 @@ function renderList() {
   }
 
   empty.classList.add('hidden');
-  list.innerHTML = filtered.map(b => `
-    <div class="bookmark-card" data-id="${b.id}">
-      <div class="card-main">
-        <a class="card-title" href="${b.url}" target="_blank" title="${b.title}">${b.title}</a>
-        <span class="badge badge-${b.status.toLowerCase()}">${b.status}</span>
-      </div>
-      <div class="card-meta">
-        <span>Ch.&nbsp;${b.chapter != null && b.chapter !== 0 ? b.chapter : '—'}</span>
-        <div class="card-actions">
-          <button class="btn-edit" data-id="${b.id}">Edit</button>
-          <button class="btn-delete" data-id="${b.id}">✕</button>
+  list.innerHTML = filtered.map(b => {
+    const tagsHtml = b.tags && b.tags.length > 0
+      ? `<div class="bookmark-tags">${b.tags.map(t => `<span class="tag-pill">${t}</span>`).join('')}</div>`
+      : '';
+    return `
+      <div class="bookmark-card" data-id="${b.id}">
+        <div class="card-main">
+          <a class="card-title" href="${b.url}" target="_blank" title="${b.title || b.url}">${b.title || b.url}</a>
+          <span class="badge badge-${b.status.toLowerCase()}">${b.status}</span>
+        </div>
+        ${tagsHtml}
+        <div class="card-meta">
+          <span>Ch.&nbsp;${b.chapter != null && b.chapter !== 0 ? b.chapter : '—'}</span>
+          <div class="card-actions">
+            <button class="btn-edit" data-id="${b.id}">Edit</button>
+            <button class="btn-delete" data-id="${b.id}">✕</button>
+          </div>
         </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 
   list.querySelectorAll('.btn-edit').forEach(btn =>
     btn.addEventListener('click', () => openModal(btn.dataset.id))
@@ -198,6 +237,7 @@ async function savePage() {
     mangaTitle,
     chapter: currentChapter,  // use detected chapter if available
     status: 'Later',
+    tags: [],
     savedAt: new Date().toISOString(),
   };
 
@@ -219,12 +259,45 @@ async function deleteBookmark(id) {
 
 // ── Edit modal ────────────────────────────────────────────────────────────────
 
+function renderModalTags() {
+  const container = document.getElementById('modal-tags-container');
+  if (!container) return;
+  container.innerHTML = modalTags.map((tag, idx) => `
+    <span class="modal-tag-chip">
+      ${tag}
+      <button class="btn-remove-tag" data-index="${idx}" type="button">✕</button>
+    </span>
+  `).join('');
+
+  container.querySelectorAll('.btn-remove-tag').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.index);
+      modalTags.splice(idx, 1);
+      renderModalTags();
+    });
+  });
+}
+
+function addTag() {
+  const input = document.getElementById('tag-input');
+  if (!input) return;
+  const tag = input.value.trim().toLowerCase();
+  if (tag && !modalTags.includes(tag)) {
+    modalTags.push(tag);
+    renderModalTags();
+  }
+  input.value = '';
+}
+
 function openModal(id) {
   const b = bookmarks.find(b => b.id === id);
   if (!b) return;
   editingId = id;
+  modalTags = b.tags ? [...b.tags] : [];
   document.getElementById('edit-chapter').value = b.chapter || 0;
   document.getElementById('edit-status').value = b.status;
+  document.getElementById('tag-input').value = '';
+  renderModalTags();
   document.getElementById('modal').classList.remove('hidden');
   document.getElementById('edit-chapter').focus();
 }
@@ -232,6 +305,7 @@ function openModal(id) {
 function closeModal() {
   document.getElementById('modal').classList.add('hidden');
   editingId = null;
+  modalTags = [];
 }
 
 async function saveModal() {
@@ -241,10 +315,10 @@ async function saveModal() {
 
   const idx = bookmarks.findIndex(b => b.id === editingId);
   if (idx === -1) return;
-  bookmarks[idx] = { ...bookmarks[idx], chapter, status };
+  bookmarks[idx] = { ...bookmarks[idx], chapter, status, tags: [...modalTags] };
 
   await persistBookmarks();
-  syncToBackend('PUT', `/bookmarks/${editingId}`, { chapter, status });
+  syncToBackend('PUT', `/bookmarks/${editingId}`, { chapter, status, tags: [...modalTags] });
   closeModal();
   renderList();
 }
@@ -307,6 +381,19 @@ async function init() {
     });
   });
 
+  document.getElementById('tag-filter').addEventListener('change', e => {
+    activeTagFilter = e.target.value;
+    renderList();
+  });
+
+  document.getElementById('btn-add-tag').addEventListener('click', addTag);
+  document.getElementById('tag-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addTag();
+    }
+  });
+
   document.getElementById('modal-save').addEventListener('click', saveModal);
   document.getElementById('modal-cancel').addEventListener('click', closeModal);
   document.getElementById('modal').addEventListener('click', e => {
@@ -315,7 +402,12 @@ async function init() {
 
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') closeModal();
-    if (e.key === 'Enter' && editingId) saveModal();
+    if (e.key === 'Enter' && editingId) {
+      if (document.activeElement === document.getElementById('tag-input')) {
+        return; // Don't submit the modal when adding a tag
+      }
+      saveModal();
+    }
   });
 }
 

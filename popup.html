@@ -23,6 +23,9 @@
       <button class="filter" data-filter="Reading">Reading</button>
       <button class="filter" data-filter="Later">Later</button>
       <button class="filter" data-filter="Finished">Finished</button>
+      <select id="tag-filter" class="filter-select">
+        <option value="">All Tags</option>
+      </select>
     </div>
 
     <div id="list"></div>
@@ -52,6 +55,15 @@
           <option value="Later">Later</option>
           <option value="Finished">Finished</option>
         </select>
+      </label>
+      <label>
+        Tags
+        <div id="modal-tags-container" class="modal-tags-container"></div>
+        <div class="tag-input-group">
+          <input id="tag-input" type="text" list="existing-tags" placeholder="Add tag...">
+          <datalist id="existing-tags"></datalist>
+          <button id="btn-add-tag" type="button">+</button>
+        </div>
       </label>
       <div class="modal-actions">
         <button id="modal-cancel">Cancel</button>
