@@ -39,10 +39,16 @@ const SITE_CONFIGS = [
     name: 'Generic',
     match: /.*/,
     getChapter() {
+      const queryEpisode = location.href.match(/[?&](?:ep|episode)=(\d+)(?:[&#]|$)/i)?.[1];
+      if (queryEpisode) return queryEpisode;
+      const urlEpisode = location.href.match(/(?:ep|episode)[s]?[-\/](\d+)/i)?.[1];
+      if (urlEpisode) return urlEpisode;
       const urlChapter = location.href.match(/chapter[s]?[-\/](\d+)/i)?.[1];
       if (urlChapter) return urlChapter;
       const titleChapter = document.title.match(/ch(?:apter)?\.?\s*(\d+)/i)?.[1];
       if (titleChapter) return titleChapter;
+      const titleEpisode = document.title.match(/ep(?:isode)?\.?\s*(\d+)/i)?.[1];
+      if (titleEpisode) return titleEpisode;
       return null;
     },
   },

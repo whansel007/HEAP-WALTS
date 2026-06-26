@@ -470,3 +470,13 @@ h1 {
   border-color: #6366f1;
   color: #fff;
 }
+
+.bookmark-schedule {
+  font-size: 10px;
+  color: #8a8a9a;
+  margin-top: 5px;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}

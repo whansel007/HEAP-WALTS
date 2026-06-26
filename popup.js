@@ -47,10 +47,26 @@ async function syncToBackend(method, path, body) {
 function extractMangaTitle(rawTitle) {
   return rawTitle
     .replace(/^\d+\s*\|\s*/, '')                // remove leading "1 | "
-    .replace(/chapter\s*\d+\s*[-–]?\s*/i, '')   // remove "Chapter 6 - "
-    .replace(/[-–]\s*MangaDex\s*$/i, '')         // remove "- MangaDex"
-    .replace(/[-–]\s*MANGA Plus\s*$/i, '')        // remove "- MANGA Plus"
+    .replace(/(?:chapter|episode)\s*\d+\s*[-–]?\s*/i, '')   // remove "Chapter 6 - " or "Episode 6 - "
+    .replace(/ep\s*\d+\s*[-–]?\s*/i, '')        // remove "Ep 6 - "
+    .replace(/(?:[-–]\s*)?MangaDex\s*$/i, '')
+    .replace(/(?:[-–]\s*)?MANGA Plus\s*$/i, '')
+    .replace(/(?:[-–]\s*)?Miruro\s*$/i, '')
     .trim();
+}
+
+function getChapterLabel(url, title = '') {
+  const lowerUrl = (url || '').toLowerCase();
+  const lowerTitle = (title || '').toLowerCase();
+  if (
+    lowerUrl.includes('miruro.to') ||
+    /[?&](?:ep|episode)=/i.test(url) ||
+    /(?:ep|episode)[s]?[-\/]\d+/i.test(url) ||
+    /ep(?:isode)?\.?\s*\d+/i.test(title)
+  ) {
+    return 'Ep.';
+  }
+  return 'Ch.';
 }
 
 // ── Current reading bar ───────────────────────────────────────────────────────
@@ -69,14 +85,35 @@ async function showCurrentReading() {
         target: { tabId: tab.id },
         func: () => {
           // Run detection inline
-          const titleChapter = document.title.match(/Chapter\s+(\d+)/i)?.[1]
-            ?? document.title.match(/#(\d+)/)?.[1]
-            ?? document.title.match(/ch(?:apter)?\.?\s*(\d+)/i)?.[1]
-            ?? null;
+          const url = location.href;
+          const title = document.title;
+          
+          let chapter = null;
+          
+          if (/mangadex\.org/.test(url)) {
+            chapter = title.match(/Chapter\s+(\d+)/i)?.[1];
+          } else if (/mangaplus\.shueisha/.test(url)) {
+            chapter = title.match(/#(\d+)/)?.[1];
+          } else if (/mangafire\.to/.test(url) || /tcbscans\./.test(url)) {
+            chapter = url.match(/chapter-(\d+)/i)?.[1];
+          } else if (/webtoons\.com/.test(url)) {
+            chapter = url.match(/episode-(\d+)/i)?.[1];
+          }
+          
+          if (!chapter) {
+            chapter = url.match(/[?&](?:ep|episode)=(\d+)(?:[&#]|$)/i)?.[1]
+              || url.match(/(?:ep|episode)[s]?[-\/](\d+)/i)?.[1]
+              || url.match(/chapter[s]?[-\/](\d+)/i)?.[1]
+              || title.match(/ch(?:apter)?\.?\s*(\d+)/i)?.[1]
+              || title.match(/ep(?:isode)?\.?\s*(\d+)/i)?.[1]
+              || title.match(/Chapter\s+(\d+)/i)?.[1]
+              || title.match(/#(\d+)/)?.[1];
+          }
+
           return {
-            chapter: titleChapter ? parseInt(titleChapter) : null,
-            title: document.title,
-            url: location.href,
+            chapter: chapter ? parseInt(chapter) : null,
+            title,
+            url,
           };
         },
       });
@@ -95,11 +132,12 @@ async function showCurrentReading() {
         });
 
         const mangaTitle = extractMangaTitle(title);
+        const label = getChapterLabel(url, title);
         el.classList.remove('hidden');
         el.innerHTML = `
           <span class="now-reading-label">Now reading</span>
           <span class="now-reading-title">${mangaTitle}</span>
-          <span class="now-reading-chapter">Ch. ${chapter}</span>
+          <span class="now-reading-chapter">${label} ${chapter}</span>
         `;
         return;
       }
@@ -116,11 +154,12 @@ async function showCurrentReading() {
   if (age > 10 * 60 * 1000) { el.classList.add('hidden'); return; }
 
   const mangaTitle = extractMangaTitle(currentReading.title || '');
+  const label = getChapterLabel(currentReading.url, currentReading.title || '');
   el.classList.remove('hidden');
   el.innerHTML = `
     <span class="now-reading-label">Now reading</span>
     <span class="now-reading-title">${mangaTitle}</span>
-    <span class="now-reading-chapter">Ch. ${currentReading.chapter}</span>
+    <span class="now-reading-chapter">${label} ${currentReading.chapter}</span>
   `;
 }
 
@@ -181,6 +220,10 @@ function renderList() {
     const tagsHtml = b.tags && b.tags.length > 0
       ? `<div class="bookmark-tags">${b.tags.map(t => `<span class="tag-pill">${t}</span>`).join('')}</div>`
       : '';
+    const label = getChapterLabel(b.url, b.title || '');
+    const scheduleHtml = b.updateSchedule
+      ? `<div class="bookmark-schedule">📅 ${b.updateSchedule}</div>`
+      : '';
     return `
       <div class="bookmark-card" data-id="${b.id}">
         <div class="card-main">
@@ -188,8 +231,9 @@ function renderList() {
           <span class="badge badge-${b.status.toLowerCase()}">${b.status}</span>
         </div>
         ${tagsHtml}
+        ${scheduleHtml}
         <div class="card-meta">
-          <span>Ch.&nbsp;${b.chapter != null && b.chapter !== 0 ? b.chapter : '—'}</span>
+          <span>${label}&nbsp;${b.chapter != null && b.chapter !== 0 ? b.chapter : '—'}</span>
           <div class="card-actions">
             <button class="btn-edit" data-id="${b.id}">Edit</button>
             <button class="btn-delete" data-id="${b.id}">✕</button>
@@ -230,6 +274,7 @@ async function savePage() {
   const { currentReading } = await chrome.storage.local.get('currentReading');
   const currentChapter = currentReading?.url === url ? currentReading.chapter : 0;
 
+  // Bookmark object structure
   const bookmark = {
     id: Date.now().toString(),
     url,
@@ -238,6 +283,7 @@ async function savePage() {
     chapter: currentChapter,  // use detected chapter if available
     status: 'Later',
     tags: [],
+    updateSchedule: '',       // Initialize update schedule
     savedAt: new Date().toISOString(),
   };
 
@@ -296,6 +342,7 @@ function openModal(id) {
   modalTags = b.tags ? [...b.tags] : [];
   document.getElementById('edit-chapter').value = b.chapter || 0;
   document.getElementById('edit-status').value = b.status;
+  document.getElementById('edit-schedule').value = b.updateSchedule || '';
   document.getElementById('tag-input').value = '';
   renderModalTags();
   document.getElementById('modal').classList.remove('hidden');
@@ -312,13 +359,14 @@ async function saveModal() {
   if (!editingId) return;
   const chapter = parseInt(document.getElementById('edit-chapter').value) || 0;
   const status = document.getElementById('edit-status').value;
+  const updateSchedule = document.getElementById('edit-schedule').value.trim();
 
   const idx = bookmarks.findIndex(b => b.id === editingId);
   if (idx === -1) return;
-  bookmarks[idx] = { ...bookmarks[idx], chapter, status, tags: [...modalTags] };
+  bookmarks[idx] = { ...bookmarks[idx], chapter, status, updateSchedule, tags: [...modalTags] };
 
   await persistBookmarks();
-  syncToBackend('PUT', `/bookmarks/${editingId}`, { chapter, status, tags: [...modalTags] });
+  syncToBackend('PUT', `/bookmarks/${editingId}`, { chapter, status, updateSchedule, tags: [...modalTags] });
   closeModal();
   renderList();
 }
