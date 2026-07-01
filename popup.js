@@ -457,6 +457,8 @@ async function init() {
       saveModal();
     }
   });
+
+  initKanaBoard();
 }
 
 init();

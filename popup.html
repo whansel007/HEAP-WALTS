@@ -10,6 +10,7 @@
       <h1>Manga Tracker</h1>
       <div class="header-actions">
         <button id="translate-btn" title="Run translation on current page">Translate</button>
+        <button id="kana-btn" title="Kana chart">あ</button>
         <button id="save-btn">+ Save Page</button>
       </div>
     </header>
@@ -76,8 +77,18 @@
     </div>
   </div>
 
-  <div id="status-toast" class="hidden"></div>
+  <div id="kana-modal" class="hidden">
+    <div class="kana-modal-content">
+      <div class="kana-modal-header">
+        <h3>Hiragana / Katakana</h3>
+        <button id="kana-close">✕</button>
+      </div>
+      <div id="kana-grid" class="kana-grid"></div>
+    </div>
+  </div>
 
+  <div id="status-toast" class="hidden"></div>
+  <script src="kana.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

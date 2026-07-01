@@ -480,3 +480,74 @@ h1 {
   align-items: center;
   gap: 4px;
 }
+
+#kana-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.kana-modal-content {
+  background: #1a1a22;
+  border: 1px solid #2a2a35;
+  border-radius: 10px;
+  padding: 16px;
+  width: 320px;
+  max-height: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.kana-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.kana-modal-header h3 { font-size: 13px; color: #fff; }
+.kana-modal-header button {
+  background: none;
+  border: none;
+  color: #888899;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.kana-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  overflow-y: auto;
+}
+
+.kana-tile {
+  background: #23232f;
+  border: 1px solid #333346;
+  border-radius: 6px;
+  padding: 10px 0;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+.kana-tile:hover { border-color: #6366f1; }
+
+.kana-char {
+  display: block;
+  font-size: 18px;
+  color: #e8e8ec;
+  font-weight: 600;
+}
+.kana-romaji {
+  display: block;
+  font-size: 9px;
+  color: #666677;
+  margin-top: 2px;
+  text-transform: uppercase;
+}
+
+.kana-tile.katakana .kana-char { color: #7c6aff; }
