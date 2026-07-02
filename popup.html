@@ -15,6 +15,10 @@
       </div>
     </header>
     <div id="current-reading" class="hidden"></div>
+    <div class="media-tabs">
+      <button class="media-tab active" data-media-type="manga">📖 Manga</button>
+      <button class="media-tab" data-media-type="anime">🎬 Anime</button>
+    </div>
     <div class="search-bar">
       <input id="search" type="text" placeholder="Search manga...">
     </div>
@@ -32,9 +36,9 @@
     <div id="list"></div>
 
     <div id="empty-state" class="hidden">
-      <div class="empty-icon">📚</div>
-      <p class="empty-title">No manga saved yet</p>
-      <p class="empty-sub">Click "+ Save Page" while on a manga chapter to add it.</p>
+      <div id="empty-icon" class="empty-icon">📚</div>
+      <p id="empty-title" class="empty-title">No manga saved yet</p>
+      <p id="empty-sub" class="empty-sub">Click "+ Save Page" while on a manga chapter to add it.</p>
     </div>
 
     <div id="loading" class="hidden">
@@ -88,7 +92,6 @@
   </div>
 
   <div id="status-toast" class="hidden"></div>
-  <script src="kana.js"></script>
-  <script src="popup.js"></script>
+  <script type="module" src="popup/popup.js"></script>
 </body>
 </html>

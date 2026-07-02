@@ -551,3 +551,21 @@ h1 {
 }
 
 .kana-tile.katakana .kana-char { color: #7c6aff; }
+
+.media-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.media-tab {
+  flex: 1;
+  padding: 6px 0;
+  border: none;
+  background: #eee;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.media-tab.active {
+  background: #444;
+  color: white;
+}

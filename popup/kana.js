@@ -1,5 +1,13 @@
 // kana.js — hiragana/katakana board
+//
+// This file is a self-contained mini-feature: it has its own data, its own
+// state, and its own click handling. Everything here is PRIVATE to this file
+// (not exported) except initKanaBoard, which is the one thing ui.js needs.
+// ui.js doesn't need to know HOW the kana board works internally — just that
+// calling initKanaBoard() sets it up.
 
+// Every kana character, paired with its romaji (Latin-letter) spelling and
+// its hiragana/katakana forms.
 const KANA_TABLE = [
   { romaji: 'a',  hira: 'あ', kata: 'ア' }, { romaji: 'i',  hira: 'い', kata: 'イ' },
   { romaji: 'u',  hira: 'う', kata: 'ウ' }, { romaji: 'e',  hira: 'え', kata: 'エ' },
@@ -30,7 +38,7 @@ const KANA_TABLE = [
   { romaji: 'wa', hira: 'わ', kata: 'ワ' }, { romaji: 'wo', hira: 'を', kata: 'ヲ' },
   { romaji: 'n',  hira: 'ん', kata: 'ン' },
 
-  // ── Dakuten (゛) ──
+  // ── Dakuten (゛) — voiced sounds like ga/za/da/ba ──
   { romaji: 'ga', hira: 'が', kata: 'ガ' }, { romaji: 'gi', hira: 'ぎ', kata: 'ギ' },
   { romaji: 'gu', hira: 'ぐ', kata: 'グ' }, { romaji: 'ge', hira: 'げ', kata: 'ゲ' },
   { romaji: 'go', hira: 'ご', kata: 'ゴ' },
@@ -44,15 +52,19 @@ const KANA_TABLE = [
   { romaji: 'bu', hira: 'ぶ', kata: 'ブ' }, { romaji: 'be', hira: 'べ', kata: 'ベ' },
   { romaji: 'bo', hira: 'ぼ', kata: 'ボ' },
 
-  // ── Handakuten (゜) ──
+  // ── Handakuten (゜) — "p" sounds ──
   { romaji: 'pa', hira: 'ぱ', kata: 'パ' }, { romaji: 'pi', hira: 'ぴ', kata: 'ピ' },
   { romaji: 'pu', hira: 'ぷ', kata: 'プ' }, { romaji: 'pe', hira: 'ぺ', kata: 'ペ' },
   { romaji: 'po', hira: 'ぽ', kata: 'ポ' },
 ];
 
+// Tracks which mode ('hira' or 'kata') each character tile is currently
+// showing. Starts everything on hiragana.
 const kanaState = {};
 KANA_TABLE.forEach(k => { kanaState[k.romaji] = 'hira'; });
 
+// Draws the grid of kana tiles based on the current kanaState, and makes
+// each tile clickable to toggle between hiragana/katakana.
 function renderKanaGrid() {
   const grid = document.getElementById('kana-grid');
   if (!grid) return;
@@ -67,6 +79,8 @@ function renderKanaGrid() {
     `;
   }).join('');
 
+  // Setting innerHTML wipes out old listeners, so re-attach a click handler
+  // to every tile each time the grid is redrawn.
   grid.querySelectorAll('.kana-tile').forEach(tile => {
     tile.addEventListener('click', () => {
       const romaji = tile.dataset.romaji;
@@ -85,10 +99,12 @@ function closeKanaModal() {
   document.getElementById('kana-modal').classList.add('hidden');
 }
 
-function initKanaBoard() {
+// The one function ui.js calls to wire up the kana board's buttons.
+export function initKanaBoard() {
   document.getElementById('kana-btn').addEventListener('click', openKanaModal);
   document.getElementById('kana-close').addEventListener('click', closeKanaModal);
   document.getElementById('kana-modal').addEventListener('click', e => {
+    // Only close if the background itself was clicked, not the content box.
     if (e.target === document.getElementById('kana-modal')) closeKanaModal();
   });
 }
