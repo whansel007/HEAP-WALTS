@@ -9,6 +9,43 @@
     <header>
       <h1>Manga Tracker</h1>
       <div class="header-actions">
+        <div class="more-menu-container">
+          <button id="more-btn" title="More settings & features">⚙️</button>
+          <div id="more-dropdown" class="more-dropdown hidden">
+            <div class="dropdown-section">
+              <h4>Settings</h4>
+              <label>
+                API Key
+                <input id="setting-api-key" type="password" placeholder="API Key...">
+              </label>
+              <label>
+                Backend URL
+                <input id="setting-api-base" type="text" placeholder="http://localhost:3001/api">
+              </label>
+              <label>
+                Default Status
+                <select id="setting-default-status">
+                  <option value="Later">Later</option>
+                  <option value="Current">Current</option>
+                  <option value="Finished">Finished</option>
+                </select>
+              </label>
+              <label>
+                Anime URL Template
+                <span class="field-desc">Used when saving from MyAnimeList. Insert {NAME} where the anime slug should go.</span>
+                <input id="setting-anime-template" type="text" placeholder="https://www.miruro.to/search?query={NAME}">
+              </label>
+            </div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-section">
+              <h4>Features</h4>
+              <button id="btn-export-data" class="dropdown-btn">📤 Export Bookmarks</button>
+              <button id="btn-import-data" class="dropdown-btn">📥 Import Bookmarks</button>
+              <input type="file" id="import-file-input" accept=".json" class="hidden">
+              <button id="btn-clear-data" class="dropdown-btn danger">🗑️ Clear All Data</button>
+            </div>
+          </div>
+        </div>
         <button id="translate-btn" title="Run translation on current page">Translate</button>
         <button id="kana-btn" title="Kana chart">あ</button>
         <button id="save-btn">+ Save Page</button>
@@ -25,7 +62,7 @@
 
     <div class="filters">
       <button class="filter active" data-filter="all">All</button>
-      <button class="filter" data-filter="Reading">Reading</button>
+      <button class="filter" data-filter="Current">Current</button>
       <button class="filter" data-filter="Later">Later</button>
       <button class="filter" data-filter="Finished">Finished</button>
       <select id="tag-filter" class="filter-select">
@@ -50,16 +87,28 @@
     <div class="modal-content">
       <h3>Edit Entry</h3>
       <label>
+        Title
+        <input id="edit-title" type="text" placeholder="Title...">
+      </label>
+      <label>
+        URL
+        <input id="edit-url" type="url" placeholder="https://...">
+      </label>
+      <label>
         Chapter
         <input id="edit-chapter" type="number" min="0" placeholder="0">
       </label>
       <label>
         Status
         <select id="edit-status">
-          <option value="Reading">Reading</option>
+          <option value="Current">Current</option>
           <option value="Later">Later</option>
           <option value="Finished">Finished</option>
         </select>
+      </label>
+      <label>
+        Type
+        <button id="edit-media-type" type="button" class="modal-toggle-btn">📖 Manga</button>
       </label>
       <label>
         Update Schedule

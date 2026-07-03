@@ -8,8 +8,27 @@
 // file easier to reason about on its own.
 // ============================================================================
 
-const API_BASE = 'http://localhost:3001/api';
 const DEFAULT_API_KEY = 'manga-tracker-dev-key';
+const DEFAULT_API_BASE = 'http://localhost:3001/api';
+
+export async function getApiBase() {
+  const { apiBase } = await chrome.storage.local.get('apiBase');
+  return apiBase || DEFAULT_API_BASE;
+}
+
+export async function saveSetting(key, value) {
+  await chrome.storage.local.set({ [key]: value });
+}
+
+export async function getAnimeTemplate() {
+  const { animeTemplate } = await chrome.storage.local.get('animeTemplate');
+  const oldDefault1 = 'https://www.miruro.to/watch/101280/{NAME}?ep=1';
+  const oldDefault2 = 'https://www.miruro.to/watch/101280/{name}?ep=1';
+  if (!animeTemplate || animeTemplate === oldDefault1 || animeTemplate === oldDefault2) {
+    return 'https://www.miruro.to/search?query={NAME}';
+  }
+  return animeTemplate;
+}
 
 // ── Shared state ────────────────────────────────────────────────────────────
 // This ONE object holds everything about "what's currently going on" in the
@@ -19,7 +38,7 @@ const DEFAULT_API_KEY = 'manga-tracker-dev-key';
 // to pass data back and forth constantly.
 export const state = {
   bookmarks: [],            // the full list of saved manga/anime
-  activeFilter: 'all',      // status filter: 'all' | 'Reading' | 'Later' | 'Finished'
+  activeFilter: 'all',      // status filter: 'all' | 'Current' | 'Later' | 'Finished'
   activeMediaType: 'manga', // which tab is selected: 'manga' | 'anime'
   searchQuery: '',          // whatever's currently typed in the search box
   activeTagFilter: '',      // which tag (if any) is selected in the dropdown
@@ -37,7 +56,21 @@ export async function loadBookmarks() {
   // .get() returns { bookmarks: [...] }. This line pulls that property out
   // and renames it to `stored`, defaulting to [] if nothing's saved yet.
   const { bookmarks: stored = [] } = await chrome.storage.local.get('bookmarks');
+  
+  // Migrate any old 'Reading' status to the more neutral 'Current' status
+  let migrated = false;
+  stored.forEach(b => {
+    if (b.status === 'Reading') {
+      b.status = 'Current';
+      migrated = true;
+    }
+  });
+
   state.bookmarks = stored;
+  
+  if (migrated) {
+    await persistBookmarks();
+  }
 }
 
 // Writes the CURRENT state.bookmarks array back out to storage.
@@ -58,12 +91,13 @@ export async function getApiKey() {
 export async function syncToBackend(method, path, body) {
   try {
     const key = await getApiKey();
+    const base = await getApiBase();
     const opts = {
       method,
       headers: { 'Content-Type': 'application/json', 'x-api-key': key },
     };
     if (body) opts.body = JSON.stringify(body);
-    await fetch(`${API_BASE}${path}`, opts);
+    await fetch(`${base}${path}`, opts);
   } catch (_) {
     // backend is optional — if it's not running, that's fine, do nothing
   }
@@ -82,6 +116,7 @@ export function extractMangaTitle(rawTitle) {
     .replace(/(?:[-–]\s*)?MangaDex\s*$/i, '')                  // trailing site name
     .replace(/(?:[-–]\s*)?MANGA Plus\s*$/i, '')
     .replace(/(?:[-–]\s*)?Miruro\s*$/i, '')
+    .replace(/(?:[-–]\s*)?MyAnimeList(?:\.net)?\s*$/i, '')
     .trim();
 }
 
@@ -222,11 +257,19 @@ export function getAllTags() {
 //      or { ok: false, reason: 'invalid' | 'duplicate' } on failure.
 export async function saveCurrentPage() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  const url = tab.url;
+  let url = tab.url;
   const title = tab.title || url;
 
   if (!url.startsWith('http')) {
     return { ok: false, reason: 'invalid' }; // e.g. a chrome:// page
+  }
+
+  const malMatch = url.match(/myanimelist\.net\/anime\/(\d+)\/([^/?#]+)/i);
+  if (malMatch) {
+    const rawName = malMatch[2];
+    const name = rawName.replace(/_/g, '+');
+    const template = await getAnimeTemplate();
+    url = template.replace(/\{name\}/i, name);
   }
 
   if (state.bookmarks.find(b => b.url === url)) {
@@ -235,8 +278,18 @@ export async function saveCurrentPage() {
 
   // If we already detected a chapter for this exact URL, reuse it.
   const { currentReading } = await chrome.storage.local.get('currentReading');
-  const currentChapter = currentReading?.url === url ? currentReading.chapter : 0;
+  let currentChapter = currentReading?.url === url ? currentReading.chapter : 0;
 
+  if (malMatch && currentChapter === 0) {
+    const epMatch = url.match(/[?&](?:ep|episode)=(\d+)/i);
+    if (epMatch) {
+      currentChapter = parseInt(epMatch[1]) || 1;
+    }
+  }
+
+  const { defaultStatus = 'Later' } = await chrome.storage.local.get('defaultStatus');
+
+  // THE BOOKMARK OBJECT STRUCTURE IS OVER HERE YOOO!!!!! RAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGHHHHHHHHHHHH
   const bookmark = {
     id: Date.now().toString(), // timestamp as a quick unique id
     url,
@@ -244,7 +297,7 @@ export async function saveCurrentPage() {
     mangaTitle: extractMangaTitle(title),
     mediaType: getChapterLabel(url, title) === 'Ep.' ? 'anime' : 'manga',
     chapter: currentChapter,
-    status: 'Later',
+    status: defaultStatus,
     tags: [],
     updateSchedule: '',
     savedAt: new Date().toISOString(),
@@ -304,9 +357,7 @@ export function stopEditing() {
   state.modalTags = [];
 }
 
-// Applies the edited fields to the bookmark currently being edited
-// (state.editingId) and saves. Returns true/false for success.
-export async function saveEditedBookmark({ chapter, status, updateSchedule }) {
+export async function saveEditedBookmark({ title, url, chapter, status, updateSchedule, mediaType }) {
   const idx = state.bookmarks.findIndex(b => b.id === state.editingId);
   if (idx === -1) return false;
 
@@ -315,19 +366,118 @@ export async function saveEditedBookmark({ chapter, status, updateSchedule }) {
   // editing — a common "update a few fields, keep the rest" pattern.
   state.bookmarks[idx] = {
     ...state.bookmarks[idx],
+    title,
+    url,
+    mangaTitle: extractMangaTitle(title),
     chapter,
     status,
     updateSchedule,
+    mediaType,
     tags: [...state.modalTags],
   };
 
   await persistBookmarks();
   syncToBackend('PUT', `/bookmarks/${state.editingId}`, {
+    title,
+    url,
     chapter,
     status,
     updateSchedule,
+    mediaType,
     tags: [...state.modalTags],
   });
 
   return true;
+}
+
+export async function clearAllBookmarks() {
+  state.bookmarks = [];
+  await persistBookmarks();
+}
+
+export async function importBookmarks(newBookmarks) {
+  if (!Array.isArray(newBookmarks)) {
+    throw new Error('Not a valid bookmarks array');
+  }
+
+  // Validate that each item has the minimum fields
+  const isValid = newBookmarks.every(b => b && typeof b === 'object' && b.id && b.url && b.title);
+  if (!isValid) {
+    throw new Error('Missing required bookmark fields (id, url, title)');
+  }
+
+  // Merge: if bookmark with ID already exists, overwrite, otherwise insert.
+  const mergedMap = new Map();
+  state.bookmarks.forEach(b => mergedMap.set(b.id, b));
+  newBookmarks.forEach(b => {
+    mergedMap.set(b.id, {
+      id: b.id,
+      url: b.url,
+      title: b.title,
+      mangaTitle: b.mangaTitle || extractMangaTitle(b.title),
+      mediaType: b.mediaType || (getChapterLabel(b.url, b.title) === 'Ep.' ? 'anime' : 'manga'),
+      chapter: typeof b.chapter === 'number' ? b.chapter : parseInt(b.chapter) || 0,
+      status: b.status || 'Later',
+      tags: Array.isArray(b.tags) ? b.tags : [],
+      updateSchedule: b.updateSchedule || '',
+      savedAt: b.savedAt || new Date().toISOString(),
+    });
+  });
+
+  state.bookmarks = Array.from(mergedMap.values()).sort((a, b) => {
+    const dateA = a.savedAt || '';
+    const dateB = b.savedAt || '';
+    return dateB.localeCompare(dateA);
+  });
+
+  await persistBookmarks();
+  return true;
+}
+
+export async function updateBookmarkToCurrentTab(id) {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab || !tab.url || !tab.url.startsWith('http')) {
+    return { ok: false, reason: 'invalid_tab' };
+  }
+
+  const url = tab.url;
+  const title = tab.title || url;
+
+  // Run chapter detection
+  const reading = await getCurrentReading(tab.id);
+  let chapter = reading ? reading.chapter : 0;
+
+  const idx = state.bookmarks.findIndex(b => b.id === id);
+  if (idx === -1) return { ok: false, reason: 'not_found' };
+
+  // Parse and transform MyAnimeList URLs if applicable
+  let transformedUrl = url;
+  let mediaType = getChapterLabel(url, title) === 'Ep.' ? 'anime' : 'manga';
+
+  const malMatch = url.match(/myanimelist\.net\/anime\/(\d+)\/([^/?#]+)/i);
+  if (malMatch) {
+    const rawName = malMatch[2];
+    const name = rawName.replace(/_/g, '+');
+    const template = await getAnimeTemplate();
+    transformedUrl = template.replace(/\{name\}/i, name);
+    mediaType = 'anime';
+    if (chapter === 0) {
+      const epMatch = transformedUrl.match(/[?&](?:ep|episode)=(\d+)/i);
+      chapter = epMatch ? parseInt(epMatch[1]) : 1;
+    }
+  }
+
+  state.bookmarks[idx] = {
+    ...state.bookmarks[idx],
+    url: transformedUrl,
+    title,
+    mangaTitle: extractMangaTitle(title),
+    chapter: chapter || state.bookmarks[idx].chapter, // maintain old chapter count if 0
+    mediaType,
+  };
+
+  await persistBookmarks();
+  syncToBackend('PUT', `/bookmarks/${id}`, state.bookmarks[idx]);
+
+  return { ok: true, bookmark: state.bookmarks[idx] };
 }

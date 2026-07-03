@@ -24,6 +24,13 @@ import {
   beginEditing,
   stopEditing,
   saveEditedBookmark,
+  getApiBase,
+  getApiKey,
+  getAnimeTemplate,
+  saveSetting,
+  clearAllBookmarks,
+  importBookmarks,
+  updateBookmarkToCurrentTab,
 } from './logic.js';
 import { initKanaBoard } from './kana.js';
 
@@ -117,6 +124,7 @@ function bookmarkCardHtml(b) {
       <div class="card-meta">
         <span>${label}&nbsp;${chapterDisplay}</span>
         <div class="card-actions">
+          <button class="btn-update" data-id="${b.id}" title="Update to current page">Update</button>
           <button class="btn-edit" data-id="${b.id}">Edit</button>
           <button class="btn-delete" data-id="${b.id}">✕</button>
         </div>
@@ -168,6 +176,9 @@ function renderList() {
   // gone. That's why we re-attach fresh listeners to the new buttons every
   // single time the list is redrawn — skipping this would leave Edit/Delete
   // silently doing nothing.
+  list.querySelectorAll('.btn-update').forEach(btn =>
+    btn.addEventListener('click', () => handleUpdateBookmark(btn.dataset.id))
+  );
   list.querySelectorAll('.btn-edit').forEach(btn =>
     btn.addEventListener('click', () => openModal(btn.dataset.id))
   );
@@ -200,6 +211,17 @@ async function handleSavePage() {
 async function handleDelete(id) {
   await deleteBookmarkById(id); // logic.js does the actual removal + saving
   renderList();                  // then we redraw to reflect it
+}
+
+async function handleUpdateBookmark(id) {
+  const result = await updateBookmarkToCurrentTab(id);
+  if (result.ok) {
+    renderList();
+    showToast('Updated to current page!', 'ok');
+  } else {
+    const msg = result.reason === 'invalid_tab' ? 'Cannot update from this page' : 'Update failed';
+    showToast(msg, 'err');
+  }
 }
 
 // ── Edit modal ────────────────────────────────────────────────────────────────
@@ -238,10 +260,20 @@ function openModal(id) {
   const b = beginEditing(id); // logic.js finds the bookmark + preps modalTags
   if (!b) return;
 
+  document.getElementById('edit-title').value = b.title || '';
+  document.getElementById('edit-url').value = b.url || '';
   document.getElementById('edit-chapter').value = b.chapter || 0;
   document.getElementById('edit-status').value = b.status;
   document.getElementById('edit-schedule').value = b.updateSchedule || '';
   document.getElementById('tag-input').value = '';
+
+  const mediaType = b.mediaType || (getChapterLabel(b.url, b.title || '') === 'Ep.' ? 'anime' : 'manga');
+  const mediaBtn = document.getElementById('edit-media-type');
+  if (mediaBtn) {
+    mediaBtn.dataset.mediaType = mediaType;
+    mediaBtn.textContent = mediaType === 'anime' ? '🎬 Anime' : '📖 Manga';
+  }
+
   renderModalTags();
   document.getElementById('modal').classList.remove('hidden');
   document.getElementById('edit-chapter').focus();
@@ -255,11 +287,23 @@ function closeModal() {
 async function handleSaveModal() {
   if (!state.editingId) return; // nothing being edited, nothing to do
 
+  const title = document.getElementById('edit-title').value.trim();
+  const url = document.getElementById('edit-url').value.trim();
   const chapter = parseInt(document.getElementById('edit-chapter').value) || 0;
   const status = document.getElementById('edit-status').value;
   const updateSchedule = document.getElementById('edit-schedule').value.trim();
+  const mediaType = document.getElementById('edit-media-type').dataset.mediaType;
 
-  await saveEditedBookmark({ chapter, status, updateSchedule });
+  if (!title) {
+    showToast('Title cannot be empty', 'err');
+    return;
+  }
+  if (!url || !url.startsWith('http')) {
+    showToast('Valid URL is required', 'err');
+    return;
+  }
+
+  await saveEditedBookmark({ title, url, chapter, status, updateSchedule, mediaType });
   closeModal();
   renderList();
 }
@@ -287,8 +331,59 @@ async function runTranslation() {
   }
 }
 
+// ── More settings & features ───────────────────────────────────────────────
+
+function handleExportBookmarks() {
+  try {
+    const blob = new Blob([JSON.stringify(state.bookmarks, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'manga_tracker_backup.json';
+    link.click();
+    URL.revokeObjectURL(url);
+    showToast('Backup downloaded!', 'ok');
+  } catch (err) {
+    showToast('Export failed', 'err');
+  }
+}
+
+function handleImportFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const imported = JSON.parse(e.target.result);
+      await importBookmarks(imported);
+      renderList();
+      showToast('Bookmarks imported!', 'ok');
+    } catch (err) {
+      showToast(err.message || 'Import failed', 'err');
+    } finally {
+      event.target.value = ''; // Reset file input
+    }
+  };
+  reader.readAsText(file);
+}
+
+async function handleClearBookmarks() {
+  const confirmed = confirm('Are you sure you want to delete ALL bookmarks? This cannot be undone.');
+  if (!confirmed) return;
+
+  try {
+    await clearAllBookmarks();
+    renderList();
+    showToast('All bookmarks cleared', 'ok');
+  } catch (err) {
+    showToast('Clear failed', 'err');
+  }
+}
+
+
 // ── Generic "tab group" wiring ─────────────────────────────────────────────────
-// Both the status filter buttons (.filter: All/Reading/Later/Finished) and
+// Both the status filter buttons (.filter: All/Current/Later/Finished) and
 // the media tabs (.media-tab: Manga/Anime) do the exact same thing when
 // clicked: un-highlight every button in the group, highlight the one that
 // was clicked, update one property on `state`, then re-render. Rather than
@@ -321,6 +416,66 @@ export async function init() {
   renderList();
   await renderCurrentReading();
 
+  // Load settings and populate UI
+  const apiBase = await getApiBase();
+  const apiKey = await getApiKey();
+  const animeTemplate = await getAnimeTemplate();
+  let { defaultStatus = 'Later' } = await chrome.storage.local.get('defaultStatus');
+  if (defaultStatus === 'Reading') {
+    defaultStatus = 'Current';
+    await saveSetting('defaultStatus', 'Current');
+  }
+
+  const apiKeyInput = document.getElementById('setting-api-key');
+  const apiBaseInput = document.getElementById('setting-api-base');
+  const defaultStatusSelect = document.getElementById('setting-default-status');
+  const animeTemplateInput = document.getElementById('setting-anime-template');
+
+  if (apiKeyInput) {
+    apiKeyInput.value = apiKey === 'manga-tracker-dev-key' ? '' : apiKey;
+    apiKeyInput.addEventListener('input', e => saveSetting('apiKey', e.target.value.trim()));
+  }
+  if (apiBaseInput) {
+    apiBaseInput.value = apiBase;
+    apiBaseInput.addEventListener('input', e => saveSetting('apiBase', e.target.value.trim()));
+  }
+  if (defaultStatusSelect) {
+    defaultStatusSelect.value = defaultStatus;
+    defaultStatusSelect.addEventListener('change', e => saveSetting('defaultStatus', e.target.value));
+  }
+  if (animeTemplateInput) {
+    animeTemplateInput.value = animeTemplate;
+    animeTemplateInput.addEventListener('input', e => saveSetting('animeTemplate', e.target.value.trim()));
+  }
+
+  // Toggle dropdown
+  const moreBtn = document.getElementById('more-btn');
+  const moreDropdown = document.getElementById('more-dropdown');
+  if (moreBtn && moreDropdown) {
+    moreBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      moreDropdown.classList.toggle('hidden');
+    });
+  }
+
+  // Close dropdown on click outside
+  document.addEventListener('click', e => {
+    const container = document.querySelector('.more-menu-container');
+    if (moreDropdown && !moreDropdown.classList.contains('hidden')) {
+      if (container && !container.contains(e.target)) {
+        moreDropdown.classList.add('hidden');
+      }
+    }
+  });
+
+  // Action buttons
+  document.getElementById('btn-export-data').addEventListener('click', handleExportBookmarks);
+  document.getElementById('btn-import-data').addEventListener('click', () => {
+    document.getElementById('import-file-input').click();
+  });
+  document.getElementById('import-file-input').addEventListener('change', handleImportFile);
+  document.getElementById('btn-clear-data').addEventListener('click', handleClearBookmarks);
+
   document.getElementById('save-btn').addEventListener('click', handleSavePage);
   document.getElementById('translate-btn').addEventListener('click', runTranslation);
 
@@ -348,6 +503,13 @@ export async function init() {
   });
 
   document.getElementById('modal-save').addEventListener('click', handleSaveModal);
+  document.getElementById('edit-media-type').addEventListener('click', () => {
+    const btn = document.getElementById('edit-media-type');
+    const current = btn.dataset.mediaType;
+    const next = current === 'anime' ? 'manga' : 'anime';
+    btn.dataset.mediaType = next;
+    btn.textContent = next === 'anime' ? '🎬 Anime' : '📖 Manga';
+  });
   document.getElementById('modal-cancel').addEventListener('click', closeModal);
   document.getElementById('modal').addEventListener('click', e => {
     // Only close if the click was on the dark background itself, not on the
