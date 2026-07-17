@@ -46,7 +46,7 @@
             </div>
           </div>
         </div>
-        <button id="translate-btn" title="Run translation on current page">Translate</button>
+        <button id="translate-btn" title="Look up a word in the dictionary">Translate</button>
         <button id="kana-btn" title="Kana chart">あ</button>
         <button id="save-btn">+ Save Page</button>
       </div>
@@ -137,6 +137,20 @@
         <button id="kana-close">✕</button>
       </div>
       <div id="kana-grid" class="kana-grid"></div>
+    </div>
+  </div>
+
+  <div id="dict-modal" class="hidden">
+    <div class="dict-modal-content">
+      <div class="dict-modal-header">
+        <h3>Japanese Dictionary</h3>
+        <button id="dict-close">✕</button>
+      </div>
+      <div class="dict-search-bar">
+        <input id="dict-input" type="text" placeholder="Enter word (English or Japanese)...">
+        <button id="dict-search-btn">Search</button>
+      </div>
+      <div id="dict-results" class="dict-results"></div>
     </div>
   </div>
 

@@ -33,6 +33,7 @@ import {
   updateBookmarkToCurrentTab,
 } from './logic.js';
 import { initKanaBoard } from './kana.js';
+import { initDictionary } from './dictionary.js';
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 // Shows a small message ("Saved!", "Already saved!") for ~2 seconds.
@@ -308,29 +309,6 @@ async function handleSaveModal() {
   renderList();
 }
 
-// ── Translation ───────────────────────────────────────────────────────────────
-
-// Injects the OCR/translation content scripts into the active tab on demand
-// (rather than having them always running on every page).
-async function runTranslation() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  const btn = document.getElementById('translate-btn');
-  btn.textContent = '...';
-  btn.disabled = true;
-  try {
-    await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      files: ['scripts/detect.js', 'content.js'],
-    });
-    showToast('Translation started!', 'ok');
-  } catch (e) {
-    showToast('Translation failed', 'err');
-  } finally {
-    btn.textContent = 'Translate';
-    btn.disabled = false;
-  }
-}
-
 // ── More settings & features ───────────────────────────────────────────────
 
 function handleExportBookmarks() {
@@ -477,7 +455,7 @@ export async function init() {
   document.getElementById('btn-clear-data').addEventListener('click', handleClearBookmarks);
 
   document.getElementById('save-btn').addEventListener('click', handleSavePage);
-  document.getElementById('translate-btn').addEventListener('click', runTranslation);
+
 
   document.getElementById('search').addEventListener('input', e => {
     state.searchQuery = e.target.value;
@@ -532,4 +510,5 @@ export async function init() {
   // doesn't need to know HOW the kana board works, just that calling this
   // one function sets it up.
   initKanaBoard();
+  initDictionary();
 }

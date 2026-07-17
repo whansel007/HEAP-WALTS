@@ -188,6 +188,8 @@ async function detectChapterOnTab(tabId) {
           chapter = url.match(/chapter-(\d+)/i)?.[1];
         } else if (/webtoons\.com/.test(url)) {
           chapter = url.match(/episode-(\d+)/i)?.[1];
+        } else if (/shonenjumpplus\.com/.test(url)) {
+          chapter = title.match(/第(\d+)話/)?.[1];
         }
 
         // ...then generic fallback patterns if none of those matched.
