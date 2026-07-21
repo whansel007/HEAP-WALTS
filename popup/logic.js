@@ -483,3 +483,26 @@ export async function updateBookmarkToCurrentTab(id) {
 
   return { ok: true, bookmark: state.bookmarks[idx] };
 }
+
+export async function reorderBookmarks(newOrderIds) {
+  const visibleIndices = [];
+  state.bookmarks.forEach((b, index) => {
+    if (newOrderIds.includes(b.id)) {
+      visibleIndices.push(index);
+    }
+  });
+
+  const visibleMap = new Map();
+  state.bookmarks.forEach(b => {
+    if (newOrderIds.includes(b.id)) {
+      visibleMap.set(b.id, b);
+    }
+  });
+
+  newOrderIds.forEach((id, i) => {
+    const originalIndex = visibleIndices[i];
+    state.bookmarks[originalIndex] = visibleMap.get(id);
+  });
+
+  await persistBookmarks();
+}

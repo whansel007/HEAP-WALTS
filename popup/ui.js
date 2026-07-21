@@ -31,6 +31,7 @@ import {
   clearAllBookmarks,
   importBookmarks,
   updateBookmarkToCurrentTab,
+  reorderBookmarks,
 } from './logic.js';
 import { initKanaBoard } from './kana.js';
 import { initDictionary } from './dictionary.js';
@@ -118,7 +119,10 @@ function bookmarkCardHtml(b) {
     <div class="bookmark-card" data-id="${b.id}">
       <div class="card-main">
         <a class="card-title" href="${b.url}" target="_blank" title="${b.title || b.url}">${b.title || b.url}</a>
-        <span class="badge badge-${b.status.toLowerCase()}">${b.status}</span>
+        <div class="card-right-col">
+          <span class="badge badge-${b.status.toLowerCase()}">${b.status}</span>
+          <div class="drag-handle" title="Drag to reorder">☰</div>
+        </div>
       </div>
       ${tagsHtml}
       ${scheduleHtml}
@@ -186,6 +190,45 @@ function renderList() {
   list.querySelectorAll('.btn-delete').forEach(btn =>
     btn.addEventListener('click', () => handleDelete(btn.dataset.id))
   );
+
+  // Drag and drop reordering
+  const cards = list.querySelectorAll('.bookmark-card');
+  cards.forEach(card => {
+    const handle = card.querySelector('.drag-handle');
+    
+    // Enable dragging only when interacting with the handle
+    handle.addEventListener('mousedown', () => {
+      card.setAttribute('draggable', 'true');
+    });
+    handle.addEventListener('mouseup', () => {
+      card.removeAttribute('draggable');
+    });
+    
+    card.addEventListener('dragstart', (e) => {
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', card.dataset.id);
+    });
+
+    card.addEventListener('dragend', async () => {
+      card.classList.remove('dragging');
+      card.removeAttribute('draggable');
+      
+      const newOrderIds = Array.from(list.querySelectorAll('.bookmark-card')).map(c => c.dataset.id);
+      await reorderBookmarks(newOrderIds);
+      renderList();
+    });
+
+    card.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      const draggingCard = list.querySelector('.dragging');
+      if (draggingCard && draggingCard !== card) {
+        const rect = card.getBoundingClientRect();
+        const next = (e.clientY - rect.top) / (rect.bottom - rect.top) > 0.5;
+        list.insertBefore(draggingCard, next ? card.nextSibling : card);
+      }
+    });
+  });
 }
 
 // ── Save current page ─────────────────────────────────────────────────────────
