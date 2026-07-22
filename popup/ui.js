@@ -27,6 +27,7 @@ import {
   getApiBase,
   getApiKey,
   getAnimeTemplate,
+  getMangaTemplate,
   saveSetting,
   clearAllBookmarks,
   importBookmarks,
@@ -441,6 +442,7 @@ export async function init() {
   const apiBase = await getApiBase();
   const apiKey = await getApiKey();
   const animeTemplate = await getAnimeTemplate();
+  const mangaTemplate = await getMangaTemplate();
   let { defaultStatus = 'Later' } = await chrome.storage.local.get('defaultStatus');
   if (defaultStatus === 'Reading') {
     defaultStatus = 'Current';
@@ -451,6 +453,7 @@ export async function init() {
   const apiBaseInput = document.getElementById('setting-api-base');
   const defaultStatusSelect = document.getElementById('setting-default-status');
   const animeTemplateInput = document.getElementById('setting-anime-template');
+  const mangaTemplateInput = document.getElementById('setting-manga-template');
 
   if (apiKeyInput) {
     apiKeyInput.value = apiKey === 'manga-tracker-dev-key' ? '' : apiKey;
@@ -467,6 +470,10 @@ export async function init() {
   if (animeTemplateInput) {
     animeTemplateInput.value = animeTemplate;
     animeTemplateInput.addEventListener('input', e => saveSetting('animeTemplate', e.target.value.trim()));
+  }
+  if (mangaTemplateInput) {
+    mangaTemplateInput.value = mangaTemplate;
+    mangaTemplateInput.addEventListener('input', e => saveSetting('mangaTemplate', e.target.value.trim()));
   }
 
   // Toggle dropdown
