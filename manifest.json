@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Manga Tracker",
-  "version": "3.1",
+  "version": "3.2",
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -11,9 +11,18 @@
   "icons": {
     "128": "images/icon-128.png"
   },
-  "permissions": ["activeTab", "scripting", "downloads", "storage", "tabs"],
+  "description": "Can bookmark manga and anime regularly or from MAL, with tags & query feature + auto-update button",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "downloads",
+    "storage",
+    "tabs"
+  ],
   "host_permissions": ["<all_urls>"],
-  "background": { "service_worker": "background.js" },
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
