@@ -431,29 +431,28 @@ export async function importBookmarks(newBookmarks) {
     throw new Error('Missing required bookmark fields (id, url, title)');
   }
 
-  // Merge: if bookmark with ID already exists, overwrite, otherwise insert.
-  const mergedMap = new Map();
-  state.bookmarks.forEach(b => mergedMap.set(b.id, b));
-  newBookmarks.forEach(b => {
-    mergedMap.set(b.id, {
-      id: b.id,
-      url: b.url,
-      title: b.title,
-      mangaTitle: b.mangaTitle || extractMangaTitle(b.title),
-      mediaType: b.mediaType || (getChapterLabel(b.url, b.title) === 'Ep.' ? 'anime' : 'manga'),
-      chapter: typeof b.chapter === 'number' ? b.chapter : parseInt(b.chapter) || 0,
-      status: b.status || 'Later',
-      tags: Array.isArray(b.tags) ? b.tags : [],
-      updateSchedule: b.updateSchedule || '',
-      savedAt: b.savedAt || new Date().toISOString(),
-    });
-  });
+  // Set of imported IDs to identify overlap with existing bookmarks
+  const importedIds = new Set(newBookmarks.map(b => b.id));
 
-  state.bookmarks = Array.from(mergedMap.values()).sort((a, b) => {
-    const dateA = a.savedAt || '';
-    const dateB = b.savedAt || '';
-    return dateB.localeCompare(dateA);
-  });
+  // Map and sanitize the imported bookmarks, preserving their order in the JSON file
+  const processedNew = newBookmarks.map(b => ({
+    id: b.id,
+    url: b.url,
+    title: b.title,
+    mangaTitle: b.mangaTitle || extractMangaTitle(b.title),
+    mediaType: b.mediaType || (getChapterLabel(b.url, b.title) === 'Ep.' ? 'anime' : 'manga'),
+    chapter: typeof b.chapter === 'number' ? b.chapter : parseInt(b.chapter) || 0,
+    status: b.status || 'Later',
+    tags: Array.isArray(b.tags) ? b.tags : [],
+    updateSchedule: b.updateSchedule || '',
+    savedAt: b.savedAt || new Date().toISOString(),
+  }));
+
+  // Keep existing bookmarks that were NOT in the imported list, in their current order
+  const remainingExisting = state.bookmarks.filter(b => !importedIds.has(b.id));
+
+  // Combine lists: imported bookmarks first (keeping JSON file order), then remaining existing ones
+  state.bookmarks = [...processedNew, ...remainingExisting];
 
   await persistBookmarks();
   return true;

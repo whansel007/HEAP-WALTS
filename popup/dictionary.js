@@ -48,6 +48,7 @@ function renderDictResults(word, results) {
 function cleanQuery(raw) {
   return raw
     .trim()
+    .toLowerCase()
     .replace(/[\n\r\t]/g, '')
     .replace(/[。、「」『』！？!?.,]/g, '')
     .split(/\s+/)[0]; // if multiple words/sentence, just use the first
@@ -105,7 +106,7 @@ async function getSelectedTextFromPage() {
 function openDictModal(prefillText) {
   document.getElementById('dict-modal').classList.remove('hidden');
   const input = document.getElementById('dict-input');
-  input.value = prefillText || '';
+  input.value = (prefillText || '').toLowerCase();
   document.getElementById('dict-results').innerHTML = '';
   input.focus();
   if (prefillText) runDictSearch(prefillText);
@@ -117,6 +118,13 @@ function closeDictModal() {
 
 // The one function ui.js calls to wire up the dictionary button + modal.
 export function initDictionary() {
+  const input = document.getElementById('dict-input');
+
+  // Enforce lowercase input dynamically
+  input.addEventListener('input', () => {
+    input.value = input.value.toLowerCase();
+  });
+
   document.getElementById('translate-btn').addEventListener('click', async () => {
     const selected = await getSelectedTextFromPage();
     openDictModal(selected);
@@ -128,11 +136,11 @@ export function initDictionary() {
   });
 
   document.getElementById('dict-search-btn').addEventListener('click', () => {
-    const word = document.getElementById('dict-input').value.trim();
+    const word = input.value.trim();
     if (word) runDictSearch(word);
   });
 
-  document.getElementById('dict-input').addEventListener('keydown', e => {
+  input.addEventListener('keydown', e => {
     if (e.key === 'Enter') {
       e.preventDefault();
       const word = e.target.value.trim();
