@@ -30,6 +30,14 @@ export async function getAnimeTemplate() {
   return animeTemplate;
 }
 
+export async function getMangaTemplate() {
+  const { mangaTemplate } = await chrome.storage.local.get('mangaTemplate');
+  if (!mangaTemplate) {
+    return 'https://mangadex.org/search?q={NAME}';
+  }
+  return mangaTemplate;
+}
+
 // ── Shared state ────────────────────────────────────────────────────────────
 // This ONE object holds everything about "what's currently going on" in the
 // popup. Both logic.js and ui.js import this exact same object (not a copy),
@@ -279,12 +287,22 @@ export async function saveCurrentPage() {
     return { ok: false, reason: 'invalid' }; // e.g. a chrome:// page
   }
 
-  const malMatch = url.match(/myanimelist\.net\/anime\/(\d+)\/([^/?#]+)/i);
-  if (malMatch) {
-    const rawName = malMatch[2];
+  const malAnimeMatch = url.match(/myanimelist\.net\/anime\/(\d+)\/([^/?#]+)/i);
+  const malMangaMatch = url.match(/myanimelist\.net\/manga\/(\d+)\/([^/?#]+)/i);
+  let detectedMediaType = null;
+
+  if (malAnimeMatch) {
+    const rawName = malAnimeMatch[2];
     const name = rawName.replace(/_/g, '+');
     const template = await getAnimeTemplate();
     url = template.replace(/\{name\}/i, name);
+    detectedMediaType = 'anime';
+  } else if (malMangaMatch) {
+    const rawName = malMangaMatch[2];
+    const name = rawName.replace(/_/g, '+');
+    const template = await getMangaTemplate();
+    url = template.replace(/\{name\}/i, name);
+    detectedMediaType = 'manga';
   }
 
   if (state.bookmarks.find(b => b.url === url)) {
@@ -295,10 +313,15 @@ export async function saveCurrentPage() {
   const { currentReading } = await chrome.storage.local.get('currentReading');
   let currentChapter = currentReading?.url === url ? currentReading.chapter : 0;
 
-  if (malMatch && currentChapter === 0) {
+  if (malAnimeMatch && currentChapter === 0) {
     const epMatch = url.match(/[?&](?:ep|episode)=(\d+)/i);
     if (epMatch) {
       currentChapter = parseInt(epMatch[1]) || 1;
+    }
+  } else if (malMangaMatch && currentChapter === 0) {
+    const chMatch = url.match(/[?&](?:ch|chapter)=(\d+)/i);
+    if (chMatch) {
+      currentChapter = parseInt(chMatch[1]) || 1;
     }
   }
 
@@ -310,7 +333,7 @@ export async function saveCurrentPage() {
     url,
     title,
     mangaTitle: extractMangaTitle(title),
-    mediaType: getChapterLabel(url, title) === 'Ep.' ? 'anime' : 'manga',
+    mediaType: detectedMediaType || (getChapterLabel(url, title) === 'Ep.' ? 'anime' : 'manga'),
     chapter: currentChapter,
     status: defaultStatus,
     tags: [],
@@ -469,9 +492,11 @@ export async function updateBookmarkToCurrentTab(id) {
   let transformedUrl = url;
   let mediaType = getChapterLabel(url, title) === 'Ep.' ? 'anime' : 'manga';
 
-  const malMatch = url.match(/myanimelist\.net\/anime\/(\d+)\/([^/?#]+)/i);
-  if (malMatch) {
-    const rawName = malMatch[2];
+  const malAnimeMatch = url.match(/myanimelist\.net\/anime\/(\d+)\/([^/?#]+)/i);
+  const malMangaMatch = url.match(/myanimelist\.net\/manga\/(\d+)\/([^/?#]+)/i);
+
+  if (malAnimeMatch) {
+    const rawName = malAnimeMatch[2];
     const name = rawName.replace(/_/g, '+');
     const template = await getAnimeTemplate();
     transformedUrl = template.replace(/\{name\}/i, name);
@@ -479,6 +504,16 @@ export async function updateBookmarkToCurrentTab(id) {
     if (chapter === 0) {
       const epMatch = transformedUrl.match(/[?&](?:ep|episode)=(\d+)/i);
       chapter = epMatch ? parseInt(epMatch[1]) : 1;
+    }
+  } else if (malMangaMatch) {
+    const rawName = malMangaMatch[2];
+    const name = rawName.replace(/_/g, '+');
+    const template = await getMangaTemplate();
+    transformedUrl = template.replace(/\{name\}/i, name);
+    mediaType = 'manga';
+    if (chapter === 0) {
+      const chMatch = transformedUrl.match(/[?&](?:ch|chapter)=(\d+)/i);
+      chapter = chMatch ? parseInt(chMatch[1]) : 1;
     }
   }
 
@@ -495,4 +530,27 @@ export async function updateBookmarkToCurrentTab(id) {
   syncToBackend('PUT', `/bookmarks/${id}`, state.bookmarks[idx]);
 
   return { ok: true, bookmark: state.bookmarks[idx] };
+}
+
+export async function reorderBookmarks(newOrderIds) {
+  const visibleIndices = [];
+  state.bookmarks.forEach((b, index) => {
+    if (newOrderIds.includes(b.id)) {
+      visibleIndices.push(index);
+    }
+  });
+
+  const visibleMap = new Map();
+  state.bookmarks.forEach(b => {
+    if (newOrderIds.includes(b.id)) {
+      visibleMap.set(b.id, b);
+    }
+  });
+
+  newOrderIds.forEach((id, i) => {
+    const originalIndex = visibleIndices[i];
+    state.bookmarks[originalIndex] = visibleMap.get(id);
+  });
+
+  await persistBookmarks();
 }

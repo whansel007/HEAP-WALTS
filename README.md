@@ -1,120 +1,39 @@
-Manga Bookmark 
+# Manga Tracker
 
-What full-stack means for this project
+**Manga Tracker** is a clean, lightweight Chrome extension designed to help you track your manga reading and anime watching progress. It runs locally in your browser, automatically detects chapters/episodes as you read/watch on various platforms, and keeps your library organized.
 
-Your stack can be:
+## Features
 
-**Frontend:**
+- **Manga & Anime Support:** Categorize and track both manga (chapter-based) and anime (episode-based) entries.
+- **Smart Auto-Detection:** Automatically parses current reading progress from sites like MangaDex, MangaPlus, MangaFire, Webtoons, TCBScans, and applies customizable patterns on other sites.
+- **Library Organization:** Filter your list by reading status (`Current`, `Later`, `Finished`), perform title searches, or filter by custom tags.
+- **Dynamic Search Shortcuts:** Search for items directly on customizable search directories (e.g. MangaDex for manga or Miruro for anime).
+- **Import & Export:** Back up your tracking list as a JSON file and restore it easily.
+- **Japanese Dictionary & Translation:** Highlight any Japanese word on a page and click the **Translate** button to search definitions, readings, and part-of-speech details instantly via the Jisho.org API. You can also type/paste words manually to query the dictionary inside the popup.
+- **Interactive Kana Reference Board:** Click the **Kana** button to toggle a handy cheat sheet of Hiragana and Katakana characters paired with romaji. Click individual characters to flip them between Hiragana and Katakana modes dynamically.
+- **Optional Backend Sync:** Support for syncing bookmarks to a local backend database if configured.
 
-* Chrome extension popup \+ options page (HTML/CSS/JavaScript)  
-* React/TypeScript or plain JS
+---
 
-**Backend:**
+## Installation Tutorial
 
-* Node.js \+ Express API server (you already use Express)  
-* Optional: MongoDB or SQLite to store bookmarks for signed-in users
+To install and load **Manga Tracker** as an unpacked extension in Google Chrome:
 
-**Storage:**
+### 1. Download the Extension Files
+Ensure that you have cloned or downloaded this repository to a local folder on your computer.
 
-* Local-only version: `chrome.storage.local` for bookmarks, no backend needed  
-* Full-stack version: backend API \+ database \+ optional auth
+### 2. Open the Extensions Page in Chrome
+- Open Google Chrome.
+- In the address bar, type `chrome://extensions/` and press **Enter**.
+- Alternatively, click the **Extensions** icon (puzzle piece) in the top-right toolbar and select **Manage Extensions**.
 
-You can start with local-only and then add a backend as an “advanced version.”
+### 3. Enable Developer Mode
+- In the top-right corner of the Extensions page, toggle the **Developer mode** switch to **ON**.
 
-Core features (MVP)
+### 4. Load the Extension
+- Click the **Load unpacked** button in the top-left corner of the page.
+- Select the project directory (the folder containing `manifest.json`, `popup.html`, `popup.css`, etc.) and click **Select Folder** (or **Open**).
 
-For 8 sessions, focus on this minimal set:
-
-1. **Save manga page**  
-   * The user is on a manga chapter page.  
-   * Click extension icon → “Save this page”.  
-   * Extension stores:  
-     * URL  
-     * Title (from page `<title>` or manually entered)  
-     * Chapter number (optional)  
-     * Timestamp  
-     * Status: Reading / Waiting / Later / Finished  
-2. **View reading list**  
-   * A popup or dedicated page shows all saved manga.  
-   * Each entry shows: title, chapter, status, last read date.  
-   * Click entry → open the page  
-3. **Edit / delete**  
-   * Edit chapter number.  
-   * Change status (Reading → Finished).  
-   * Delete entry  
-4. **Search / filter**  
-   * Filter by status (Reading, Later, Finished).  
-   * Basic search by title
-
-That’s already a complete, usable product.
-
-Optional advanced features (if time)
-
-* Export/backup to JSON, import from JSON  
-* Drag-to-reorder list.  
-* Notes per manga (“Started at chapter 5, dark arc”).  
-* Simple sync with backend: login \+ cloud storage.  
-* Dark mode / theme colors.
-
-Suggested 8-week plan (1 session/week)
-
-Each week is a milestone with a small demo.
-
-**Week 1: Project setup \+ basic extension**
-
-* Create extension folder: `manifest.json`, `popup.html`, `popup.js`, `background.js` or `content.js`.  
-* Implement a “Save this page” button that stores URL \+ title in `chrome.storage.local`.  
-* Show a simple list in the popup (just URLs for now).
-
-**Week 2: Reading list UI**
-
-* Improve popup UI: show title, chapter, status.  
-* Add edit chapter number and change status.  
-* Add delete button.  
-* Store data as an array of entries in `chrome.storage.local`
-
-**Week 3: Filter \+ search**
-
-* Add filter buttons: All / Reading / Later / Finished.  
-* Add search bar to filter by title.  
-* Improve UI with CSS (maybe minimal Tailwind or custom styles).
-
-**Week 5: Add backend (Express API)**
-
-* Set up Node.js \+ Express server locally.  
-* Create endpoints:  
-  * `POST /api/bookmarks`  
-  * `GET /api/bookmarks`  
-  * `PUT /api/bookmarks/:id`  
-  * `DELETE /api/bookmarks/:id`.\[[stackoverflow](https://stackoverflow.com/questions/12575965/is-it-possible-to-develop-google-chrome-extensions-using-node-js)\]  
-* Extension can optionally send data to backend instead of, or in addition to, local storage.
-
-**Week 6: Database \+ optional auth**
-
-* Add MongoDB or SQLite.  
-* Store bookmarks with user ID.  
-* Optional: simple JWT auth or just API key for demo.  
-* Extension can store API token in `chrome.storage.local`.
-
-**Week 7: Polish UI \+ UX**
-
-* Improve popup design, animations, error states.  
-* Add loading states, empty state (“No bookmarks yet”).  
-* Add a simple onboarding tutorial.
-
-**Week 8: Testing \+ demo \+ documentation**
-
-* Test on multiple manga sites.  
-* Write a README with installation steps.  
-* Record a 2–3 minute demo video.  
-* Prepare a short slide deck for the program.
-
-What makes this a strong full-stack demo
-
-You can show:
-
-* A working Chrome extension (frontend).  
-* A Node.js \+ Express backend (API).  
-* A database (optional but looks good).  
-* Clear data flow: extension → backend → database.  
-* Your own UI design, not just a template.
+### 5. Pin the Extension (Recommended)
+- Click the **Extensions** icon (puzzle piece) in the Chrome toolbar.
+- Find **Manga Tracker** in the list and click the **Pin** icon next to it to make it easily accessible in your toolbar.

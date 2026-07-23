@@ -312,6 +312,28 @@ h1 {
 }
 .bookmark-card:hover { border-color: #3a3a4a; }
 
+.drag-handle {
+  cursor: grab;
+  color: #888899;
+  user-select: none;
+  font-size: 14px;
+  padding: 2px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s;
+  line-height: 1;
+}
+.drag-handle:hover {
+  color: #6366f1;
+}
+
+.bookmark-card.dragging {
+  opacity: 0.4;
+  border: 1px dashed #6366f1;
+  background: #12121a;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -319,9 +341,17 @@ h1 {
 
 .card-main {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   margin-bottom: 6px;
+}
+
+.card-right-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
 }
 
 .card-title {
