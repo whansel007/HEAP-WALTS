@@ -125,12 +125,25 @@ export function extractMangaTitle(rawTitle) {
     .replace(/(?:[-–]\s*)?MANGA Plus\s*$/i, '')
     .replace(/(?:[-–]\s*)?Miruro\s*$/i, '')
     .replace(/(?:[-–]\s*)?MyAnimeList(?:\.net)?\s*$/i, '')
+    .replace(/(?:[-–]|\|)\s*VIZ\s*$/i, '') 
     .trim();
 }
+
+// Sites that are always manga, even though their URLs happen to contain
+// words like "episode" that would otherwise trigger the anime/Ep. guess
+// below (e.g. Shonen Jump+ uses /episode/12345 in its URLs for CHAPTERS).
+const FORCE_MANGA_SITES = [
+  /shonenjumpplus\.com/,
+  /viz\.com/,
+];
 
 // Decides whether something should be labeled "Ep." (episode-based, anime)
 // or "Ch." (chapter-based, manga) by checking known site URL/title patterns.
 export function getChapterLabel(url, title = '') {
+  if (FORCE_MANGA_SITES.some(p => p.test(url || ''))) {
+    return 'Ch.';
+  }
+  
   const isEpisodeStyle =
     (url || '').toLowerCase().includes('miruro.to') ||
     /[?&](?:ep|episode)=/i.test(url) ||
