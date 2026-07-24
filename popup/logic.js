@@ -22,10 +22,8 @@ export async function saveSetting(key, value) {
 
 export async function getAnimeTemplate() {
   const { animeTemplate } = await chrome.storage.local.get('animeTemplate');
-  const oldDefault1 = 'https://www.miruro.to/watch/101280/{NAME}?ep=1';
-  const oldDefault2 = 'https://www.miruro.to/watch/101280/{name}?ep=1';
-  if (!animeTemplate || animeTemplate === oldDefault1 || animeTemplate === oldDefault2) {
-    return 'https://www.miruro.to/search?query={NAME}';
+  if (!animeTemplate) {
+    return 'https://animex.one/catalog?search={NAME}';
   }
   return animeTemplate;
 }
